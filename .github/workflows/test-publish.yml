@@ -11,7 +11,7 @@ on:
       push_to_registry:
         description: "Actually push to GHCR?"
         type: boolean
-        default: false
+        default: true
       name_suffix:
         description: "Optional image suffix for sandbox (e.g. -sandbox)"
         type: string
