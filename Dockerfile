@@ -1,12 +1,14 @@
-FROM node:24-alpine AS build
-WORKDIR /app
-COPY package*.json ./
-RUN npm ci
-COPY . .
-# important to set the correct path for your app
-ARG BASE_PATH=/<team>/app/<app-path>/
-RUN npm run build -- --base=${BASE_PATH}
+FROM python:3.12-slim
 
-# --- serve
-FROM nginxinc/nginx-unprivileged:1.29.1-alpine
-COPY --from=build /app/dist /usr/share/nginx/html/<team>/app/<app-path>/
+WORKDIR /app
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+COPY app.py .
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1
+
+USER appuser
+EXPOSE 8000
+CMD ["python", "app.py"]
