@@ -1,0 +1,29 @@
+# .github/workflows/publish.yml
+name: Publish image
+
+on:
+  push:
+    branches: [ "main" ]
+  # tags: [ "v*", "release-*" ]   # optional
+
+permissions:
+  contents: read
+  packages: write  
+
+jobs:
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Build & publish
+        uses: agile-software-engineering-25/build-and-publish-image@v1
+        with:
+          # optional — defaults shown:
+          # image_name: ""                 # defaults to repo name (lowercased)
+          # context: "."
+          # file: "Dockerfile"
+          # name_suffix: ""                # e.g. "-frontend" or "-backend"
+          # platforms: "linux/amd64,linux/arm64"
+          # extra_tags: ""                 # e.g. "type=raw,value=prod"
+          # build_args: |                  # newline separated
+          #   BASE_PATH=/team/app/my-app/
+          push: ${{ github.event_name != 'pull_request' }}
