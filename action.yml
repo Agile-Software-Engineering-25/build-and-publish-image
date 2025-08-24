@@ -1,0 +1,101 @@
+name: "Build & Publish Docker image to GHCR"
+description: "Builds Dockerfile and publishes to ghcr.io/agile-software-engineering-25/<image> with tags."
+branding:
+  icon: "package"
+  color: "blue"
+
+inputs:
+  image_name:
+    description: "Image name (lowercase). Defaults to repo name."
+    required: false
+    default: ""
+  context:
+    description: "Build context."
+    required: false
+    default: "."
+  file:
+    description: "Path to Dockerfile."
+    required: false
+    default: "Dockerfile"
+  platforms:
+    description: "Target platforms."
+    required: false
+    default: "linux/amd64,linux/arm64"
+  build_args:
+    description: "Build args, one per line: KEY=VALUE"
+    required: false
+    default: ""
+  name_suffix:
+    description: "Optional suffix for image name, e.g. -frontend"
+    required: false
+    default: ""
+  extra_tags:
+    description: "Extra tags (newline-separated)."
+    required: false
+    default: ""
+  push:
+    description: "Whether to push to GHCR."
+    required: false
+    default: "true"
+  use_cache:
+    description: "Use GitHub Actions cache."
+    required: false
+    default: "true"
+
+runs:
+  using: "composite"
+  steps:
+    - name: Checkout
+      uses: actions/checkout@v5
+
+    - name: Compute image name (lowercase)
+      id: vars
+      shell: bash
+      run: |
+        raw="${{ inputs.image_name }}"
+        if [ -z "$raw" ]; then
+          raw="${{ github.event.repository.name }}"
+        fi
+        # lowercase, GHCR requires it
+        img="$(echo "$raw" | tr '[:upper:]' '[:lower:]')"
+        echo "image_name=$img" >> "$GITHUB_OUTPUT"
+        echo "full_image=ghcr.io/agile-software-engineering-25/${img}${{ inputs.name_suffix }}" >> "$GITHUB_OUTPUT"
+
+    - name: Set up QEMU (multi-arch)
+      uses: docker/setup-qemu-action@v3
+
+    - name: Set up Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Log in to GHCR
+      if: ${{ inputs.push == 'true' }}
+      uses: docker/login-action@v3
+      with:
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ github.token }}
+
+    - name: Docker metadata (tags & labels)
+      id: meta
+      uses: docker/metadata-action@v5
+      with:
+        images: ${{ steps.vars.outputs.full_image }}
+        tags: |
+          type=raw,value=latest,enable={{is_default_branch}}
+          type=ref,event=branch
+          type=ref,event=tag
+          type=sha
+          ${{ inputs.extra_tags }}
+
+    - name: Build & (optionally) push
+      uses: docker/build-push-action@v5
+      with:
+        context: ${{ inputs.context }}
+        file:    ${{ inputs.file }}
+        platforms: ${{ inputs.platforms }}
+        push: ${{ inputs.push == 'true' }}
+        tags:   ${{ steps.meta.outputs.tags }}
+        labels: ${{ steps.meta.outputs.labels }}
+        build-args: ${{ inputs.build_args }}
+        cache-from: ${{ inputs.use_cache == 'true' && 'type=gha' || '' }}
+        cache-to:   ${{ inputs.use_cache == 'true' && 'type=gha,mode=max' || '' }}

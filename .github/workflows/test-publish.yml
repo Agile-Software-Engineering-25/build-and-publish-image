@@ -1,0 +1,32 @@
+name: Build & (maybe) Publish
+
+on:
+  push:
+    branches: [ "main" ]        
+    tags:     [ "v*", "release-*" ]
+  pull_request:                  
+    branches: [ "main" ]
+
+permissions:
+  contents: read
+  packages: write 
+
+jobs:
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - name: checkout repo
+        uses: actions/checkout@v5
+      - name: Build (and conditionally push)
+        uses: ./
+        with:
+          # optional — defaults shown:
+          # image_name: ""                 # defaults to repo name (lowercased)
+          # context: "."
+          # file: "Dockerfile"
+          # name_suffix: ""                # e.g. "-frontend" or "-backend"
+          # platforms: "linux/amd64,linux/arm64"
+          # extra_tags: ""                 # e.g. "type=raw,value=prod"
+          # build_args: |                  # newline separated
+          #   BASE_PATH=/team/app/my-app/
+          push: ${{ github.event_name != 'pull_request' }}
