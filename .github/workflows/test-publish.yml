@@ -2,11 +2,11 @@ name: Build & (maybe) Publish
 
 on:
   push:
-    branches: [ "main" ]        # real publish
+    branches: [ "main" ]        
     tags:     [ "v*", "release-*" ]
-  pull_request:                  # test builds on PRs (no push)
+  pull_request:                  
     branches: [ "main" ]
-  workflow_dispatch:             # manual test runs
+  workflow_dispatch:             # test runs
     inputs:
       push_to_registry:
         description: "Actually push to GHCR?"
@@ -23,14 +23,14 @@ on:
 
 permissions:
   contents: read
-  packages: write   # needed if a run actually pushes
+  packages: write 
 
 jobs:
   docker:
     runs-on: ubuntu-latest
     steps:
       - name: Build (and conditionally push)
-        uses: your-org/docker-publish-action@v1
+        uses: Agile-Software-Engineering-25/build-and-publish-image@v1
         with:
           # Keep defaults unless you need to tweak:
           # image_name: ""           # defaults to repo name (lowercase)
