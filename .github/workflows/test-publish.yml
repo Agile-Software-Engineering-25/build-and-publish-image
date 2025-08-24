@@ -6,20 +6,6 @@ on:
     tags:     [ "v*", "release-*" ]
   pull_request:                  
     branches: [ "main" ]
-  workflow_dispatch:             # test runs
-    inputs:
-      push_to_registry:
-        description: "Actually push to GHCR?"
-        type: boolean
-        default: true
-      name_suffix:
-        description: "Optional image suffix for sandbox (e.g. -sandbox)"
-        type: string
-        default: "-sandbox"
-      extra_tag:
-        description: "Optional extra tag (e.g. canary)"
-        type: string
-        default: ""
 
 permissions:
   contents: read
@@ -34,20 +20,13 @@ jobs:
       - name: Build (and conditionally push)
         uses: ./
         with:
-          # Keep defaults unless you need to tweak:
-          # image_name: ""           # defaults to repo name (lowercase)
+          # optional — defaults shown:
+          # image_name: ""                 # defaults to repo name (lowercased)
           # context: "."
           # file: "Dockerfile"
-          name_suffix: ${{ (github.event_name == 'workflow_dispatch' && inputs.name_suffix) || '' }}
-
-# actually push when:
-#   - push to main
-#   - push a tag
-#   - manual run with push_to_registry = true
-          push: ${{ (github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/')))
-                    || (github.event_name == 'workflow_dispatch' && inputs.push_to_registry == true) }}
-
-# extra tags: optional on manual runs; PRs get pr-<number> but won’t push unless you allow it
-          extra_tags: |
-            ${{ github.event_name == 'workflow_dispatch' && inputs.extra_tag && format('type=raw,value={0}', inputs.extra_tag) || '' }}
-            ${{ github.event_name == 'pull_request' && format('type=raw,value=pr-{0}', github.event.number) || '' }}
+          # name_suffix: ""                # e.g. "-frontend" or "-backend"
+          # platforms: "linux/amd64,linux/arm64"
+          # extra_tags: ""                 # e.g. "type=raw,value=prod"
+          # build_args: |                  # newline separated
+          #   BASE_PATH=/team/app/my-app/
+          push: ${{ github.event_name != 'pull_request' }}
