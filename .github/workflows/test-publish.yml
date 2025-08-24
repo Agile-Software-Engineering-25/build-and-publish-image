@@ -1,29 +1,55 @@
-# .github/workflows/publish.yml
-name: Publish image
+name: Build & (maybe) Publish
 
 on:
   push:
+    branches: [ "main" ]        # real publish
+    tags:     [ "v*", "release-*" ]
+  pull_request:                  # test builds on PRs (no push)
     branches: [ "main" ]
-  # tags: [ "v*", "release-*" ]   # optional
+  workflow_dispatch:             # manual test runs
+    inputs:
+      push_to_registry:
+        description: "Actually push to GHCR?"
+        type: boolean
+        default: false
+      name_suffix:
+        description: "Optional image suffix for sandbox (e.g. -sandbox)"
+        type: string
+        default: ""
+      extra_tag:
+        description: "Optional extra tag (e.g. canary)"
+        type: string
+        default: ""
 
 permissions:
   contents: read
-  packages: write  
+  packages: write   # needed if a run actually pushes
 
 jobs:
   docker:
     runs-on: ubuntu-latest
     steps:
-      - name: Build & publish
-        uses: agile-software-engineering-25/build-and-publish-image@v1
+      - name: Build (and conditionally push)
+        uses: your-org/docker-publish-action@v1
         with:
-          # optional — defaults shown:
-          # image_name: ""                 # defaults to repo name (lowercased)
+          # Keep defaults unless you need to tweak:
+          # image_name: ""           # defaults to repo name (lowercase)
           # context: "."
           # file: "Dockerfile"
-          # name_suffix: ""                # e.g. "-frontend" or "-backend"
-          # platforms: "linux/amd64,linux/arm64"
-          # extra_tags: ""                 # e.g. "type=raw,value=prod"
-          # build_args: |                  # newline separated
+          name_suffix: ${{ inputs.name_suffix }}
+
+          # only push when:
+          #  - it's a push to main, OR
+          #  - it's a tag push, OR
+          #  - it's a manual run with push_to_registry=true
+          push: ${{ (github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/')))
+                    || (github.event_name == 'workflow_dispatch' && inputs.push_to_registry) }}
+
+          # add preview tags on PRs or manual runs if you want
+          extra_tags: |
+            ${{ inputs.extra_tag != '' && format('type=raw,value={0}', inputs.extra_tag) || '' }}
+            ${{ github.event_name == 'pull_request' && format('type=raw,value=pr-{0}', github.event.number) || '' }}
+
+          # example: pass build args for Vite base path when testing
+          # build_args: |
           #   BASE_PATH=/team/app/my-app/
-          push: ${{ github.event_name != 'pull_request' }}
